@@ -195,14 +195,15 @@ export default function App() {
     setConcurrencyTesting(true);
     setConcurrencyResults(null);
 
-    // Find limited stock item
-    const targetItem = products.find(p => Number(p.available_stock) > 0);
+    // Target the limited stock item (stock = 1) if available, or first available product
+    const targetItem = products.find(p => Number(p.available_stock) === 1) || products.find(p => Number(p.available_stock) > 0);
     if (!targetItem) {
       alert('No product with available stock found to test!');
       setConcurrencyTesting(false);
       return;
     }
 
+    const initialStock = Number(targetItem.available_stock);
     const testRequestsCount = 15;
     const reqPromises = [];
 
@@ -229,10 +230,11 @@ export default function App() {
 
     setConcurrencyResults({
       itemTested: targetItem.name,
+      initialStock,
       requestsSent: testRequestsCount,
       successCount,
       rejectedCount,
-      oversellingAvoided: successCount <= targetItem.available_stock,
+      oversellingAvoided: successCount <= initialStock,
       details: results
     });
 
@@ -590,11 +592,11 @@ export default function App() {
               <div style={{ marginTop: 24, borderTop: '1px solid #e2e8f0', paddingTop: 20 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
                   {concurrencyResults.oversellingAvoided ? (
-                    <div style={{ background: '#dcfce7', color: '#15803d', padding: '6px 14px', borderRadius: 6, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <CheckCircle2 size={18} /> PASSED: Overselling Prevented! 1 Succeeded, {concurrencyResults.rejectedCount} Safely Rejected.
+                    <div style={{ background: '#dcfce7', color: '#15803d', padding: '8px 14px', borderRadius: 6, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <CheckCircle2 size={18} /> PASSED: Overselling Prevented on "{concurrencyResults.itemTested}"! {concurrencyResults.successCount} Allowed (Stock: {concurrencyResults.initialStock}), {concurrencyResults.rejectedCount} Safely Rejected.
                     </div>
                   ) : (
-                    <div style={{ background: '#fee2e2', color: '#b91c1c', padding: '6px 14px', borderRadius: 6, fontWeight: 700 }}>
+                    <div style={{ background: '#fee2e2', color: '#b91c1c', padding: '8px 14px', borderRadius: 6, fontWeight: 700 }}>
                       FAILED: Overselling detected!
                     </div>
                   )}
