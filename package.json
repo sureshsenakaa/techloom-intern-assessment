@@ -1,0 +1,10 @@
+{
+  "name": "techloom-intern-assessment",
+  "version": "1.0.0",
+  "description": "Techloom.ai Software Engineer Intern Assessment: Concurrency-Safe POS & E-Commerce Systems",
+  "scripts": {
+    "test:concurrency": "node task-01/concurrency-test.js",
+    "start:task-01-backend": "node task-01/backend/src/server.js",
+    "start:task-02-backend": "node task-02/backend/src/server.js"
+  }
+}
