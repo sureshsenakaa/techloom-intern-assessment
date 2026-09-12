@@ -11,8 +11,8 @@
 | Deliverable | Live URL / Reference |
 | :--- | :--- |
 | **GitHub Repository** | [https://github.com/sureshsenakaa/techloom-intern-assessment](https://github.com/sureshsenakaa/techloom-intern-assessment) |
-| **Task 01 Live URL (POS System)** | *[Add your deployed Task 01 Vercel/Render link here]* |
-| **Task 02 Live URL (E-Commerce)** | *[Add your deployed Task 02 Vercel/Render link here]* |
+| **Task 01 Live URL (POS System)** | [https://techloom-suresh-pos.vercel.app](https://techloom-suresh-pos.vercel.app) |
+| **Task 02 Live URL (E-Commerce)** | [https://techloom-suresh-ecomm.vercel.app](https://techloom-suresh-ecomm.vercel.app) |
 | **Walkthrough Demo Video** | *[Optional: Add Loom demo video link here]* |
 
 ---
