@@ -8,7 +8,7 @@ const reservationWorker = require('./services/reservationWorker');
 const apiRoutes = require('./routes/api');
 
 const app = express();
-const PORT = process.env.PORT || 5002;
+const PORT = process.env.PORT || 8082;
 
 app.use(cors());
 app.use(express.json());
