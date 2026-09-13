@@ -6,7 +6,6 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "seed": "node src/migrations/seed.js",
     "test:concurrency": "node ../concurrency-test.js"
   },
   "dependencies": {

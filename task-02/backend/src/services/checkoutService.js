@@ -7,7 +7,8 @@ class ProductLock {
   }
 
   async acquire(productIds) {
-    const sorted = [...productIds].sort((a, b) => a - b);
+    // Deduplicate to prevent self-deadlock when cart has duplicate product IDs
+    const sorted = [...new Set(productIds)].sort((a, b) => a - b);
     for (const id of sorted) {
       while (this.locks.has(id)) {
         await this.locks.get(id);
@@ -50,8 +51,17 @@ class CheckoutService {
       if (idempotencyKey) {
         const existing = await client.query('SELECT * FROM orders WHERE idempotency_key = $1', [idempotencyKey]);
         if (existing.rows.length > 0) {
+          const existingOrder = existing.rows[0];
+          const existingItems = await client.query('SELECT * FROM order_items WHERE order_id = $1', [existingOrder.id]);
+          const activeRes = await client.query(
+            "SELECT expires_at FROM reservations WHERE order_id = $1 AND status = 'ACTIVE' LIMIT 1",
+            [existingOrder.id]
+          );
+          const expiresInSeconds = activeRes.rows.length > 0
+            ? Math.max(0, Math.floor((new Date(activeRes.rows[0].expires_at) - Date.now()) / 1000))
+            : 0;
           await client.query('COMMIT');
-          return { order: existing.rows[0], duplicate: true };
+          return { order: existingOrder, items: existingItems.rows, expiresInSeconds, duplicate: true };
         }
       }
 

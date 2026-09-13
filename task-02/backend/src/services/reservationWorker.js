@@ -40,10 +40,17 @@ class ReservationWorker {
         try {
           await client.query('BEGIN');
 
-          await client.query(
-            `UPDATE reservations SET status = 'EXPIRED' WHERE id = $1 AND status = 'ACTIVE'`,
+          // Only proceed if we actually transitioned the reservation from ACTIVE → EXPIRED
+          const updateRes = await client.query(
+            `UPDATE reservations SET status = 'EXPIRED' WHERE id = $1 AND status = 'ACTIVE' RETURNING id`,
             [res.id]
           );
+
+          // If another process (e.g. payment) already completed/released this reservation, skip stock restore
+          if (updateRes.rowCount === 0) {
+            await client.query('COMMIT');
+            continue;
+          }
 
           await client.query(
             `UPDATE products 

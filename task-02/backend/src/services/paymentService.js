@@ -126,14 +126,35 @@ class PaymentService {
         return { message: 'Order is already cancelled.', order };
       }
 
+      // Only allow cancellation of PAID or RESERVED orders
+      // EXPIRED and FAILED orders already had their stock restored — cancelling them again would double-count
+      if (!['PAID', 'RESERVED'].includes(order.status)) {
+        await client.query('COMMIT');
+        throw { status: 400, message: `Cannot cancel an order with status: ${order.status}. Stock was already released.` };
+      }
+
       const items = await client.query('SELECT * FROM order_items WHERE order_id = $1', [orderId]);
 
-      // Restore stock
-      for (const item of items.rows) {
+      if (order.status === 'RESERVED') {
+        // RESERVED: stock is in reserved_stock → move back to available_stock and release reservations
+        for (const item of items.rows) {
+          await client.query(
+            `UPDATE products SET available_stock = available_stock + $1, reserved_stock = GREATEST(0, reserved_stock - $1), updated_at = NOW() WHERE id = $2`,
+            [item.quantity, item.product_id]
+          );
+        }
         await client.query(
-          `UPDATE products SET available_stock = available_stock + $1, updated_at = NOW() WHERE id = $2`,
-          [item.quantity, item.product_id]
+          `UPDATE reservations SET status = 'RELEASED' WHERE order_id = $1 AND status = 'ACTIVE'`,
+          [orderId]
         );
+      } else if (order.status === 'PAID') {
+        // PAID: reserved_stock was already cleared during payment → only restore available_stock
+        for (const item of items.rows) {
+          await client.query(
+            `UPDATE products SET available_stock = available_stock + $1, updated_at = NOW() WHERE id = $2`,
+            [item.quantity, item.product_id]
+          );
+        }
       }
 
       let refundIssued = false;

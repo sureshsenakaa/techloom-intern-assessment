@@ -86,8 +86,13 @@ exports.getOrders = async (req, res, next) => {
   }
 };
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 exports.getOrderById = async (req, res, next) => {
   try {
+    if (!UUID_REGEX.test(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid order ID format.' });
+    }
     const order = await checkoutService.getOrderById(req.params.id);
     if (!order) return res.status(404).json({ success: false, message: 'Order not found.' });
     res.json({ success: true, data: order });
@@ -98,6 +103,9 @@ exports.getOrderById = async (req, res, next) => {
 
 exports.cancelOrder = async (req, res, next) => {
   try {
+    if (!UUID_REGEX.test(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid order ID format.' });
+    }
     const { reason } = req.body;
     const result = await paymentService.cancelAndRefund(req.params.id, reason);
     res.json({ success: true, message: result.message, data: result.order, refundIssued: result.refundIssued });

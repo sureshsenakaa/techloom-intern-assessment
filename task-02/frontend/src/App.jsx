@@ -769,6 +769,28 @@ export default function App() {
                     ? 'Order placed! Redirecting to your Order History...' 
                     : 'Reserved stock has been safely released back to available inventory.'}
                 </div>
+                {/* Allow user to dismiss modal on failure/timeout */}
+                {!paymentFeedback.success && (
+                  <button
+                    onClick={() => {
+                      setCheckoutStep(null);
+                      setActiveReservation(null);
+                      setPaymentFeedback(null);
+                      fetchProducts();
+                    }}
+                    style={{
+                      marginTop: 12,
+                      background: '#b91c1c',
+                      color: 'white',
+                      padding: '8px 20px',
+                      fontWeight: 600,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6
+                    }}>
+                    <X size={16} /> Return to Shop
+                  </button>
+                )}
               </div>
             ) : (
               <div>
