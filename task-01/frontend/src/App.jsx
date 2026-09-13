@@ -13,7 +13,8 @@ import {
   Minus, 
   Trash2, 
   CreditCard,
-  RotateCcw
+  RotateCcw,
+  Edit2
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
@@ -34,6 +35,99 @@ export default function App() {
   // Concurrency Test State
   const [concurrencyResults, setConcurrencyResults] = useState(null);
   const [concurrencyTesting, setConcurrencyTesting] = useState(false);
+
+  // Product CRUD State
+  const [productModalOpen, setProductModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [productFormData, setProductFormData] = useState({ name: '', sku: '', description: '', price: '', available_stock: '' });
+  const [isSubmittingProduct, setIsSubmittingProduct] = useState(false);
+  const [productFormError, setProductFormError] = useState(null);
+
+  const handleOpenCreateProduct = () => {
+    setEditingProduct(null);
+    setProductFormData({ name: '', sku: '', description: '', price: '', available_stock: '10' });
+    setProductFormError(null);
+    setProductModalOpen(true);
+  };
+
+  const handleOpenEditProduct = (product) => {
+    setEditingProduct(product);
+    setProductFormData({
+      name: product.name,
+      sku: product.sku,
+      description: product.description || '',
+      price: product.price.toString(),
+      available_stock: product.available_stock.toString()
+    });
+    setProductFormError(null);
+    setProductModalOpen(true);
+  };
+
+  const handleSaveProduct = async (e) => {
+    e.preventDefault();
+    setIsSubmittingProduct(true);
+    setProductFormError(null);
+
+    try {
+      if (editingProduct) {
+        const res = await fetch(`${API_BASE}/products/${editingProduct.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: productFormData.name,
+            description: productFormData.description,
+            price: parseFloat(productFormData.price),
+            available_stock: parseInt(productFormData.available_stock, 10)
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.message || 'Failed to update product');
+        }
+      } else {
+        const res = await fetch(`${API_BASE}/products`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: productFormData.name,
+            sku: productFormData.sku,
+            description: productFormData.description,
+            price: parseFloat(productFormData.price),
+            available_stock: parseInt(productFormData.available_stock, 10)
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.message || 'Failed to create product');
+        }
+      }
+
+      setProductModalOpen(false);
+      fetchProducts();
+    } catch (err) {
+      setProductFormError(err.message);
+    } finally {
+      setIsSubmittingProduct(false);
+    }
+  };
+
+  const handleDeleteProduct = async (productId, productName) => {
+    if (!confirm(`Are you sure you want to delete product "${productName}"?`)) return;
+    try {
+      const res = await fetch(`${API_BASE}/products/${productId}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        alert(data.message || 'Failed to delete product');
+        return;
+      }
+      setCart(prev => prev.filter(item => item.productId !== productId));
+      fetchProducts();
+    } catch (err) {
+      alert('Error deleting product: ' + err.message);
+    }
+  };
 
   // Auto-refresh interval
   useEffect(() => {
@@ -301,11 +395,18 @@ export default function App() {
                   <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#0f172a' }}>Live Product Inventory</h2>
                   <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Stock count is locked exclusively during checkout to prevent overselling.</p>
                 </div>
-                <button 
-                  onClick={() => { fetchProducts(); fetchOrders(); }}
-                  style={{ background: '#e2e8f0', color: '#334155', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <RefreshCw size={14} /> Refresh
-                </button>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <button 
+                    onClick={handleOpenCreateProduct}
+                    style={{ background: '#2563eb', color: 'white', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, borderRadius: 6, border: 'none', cursor: 'pointer' }}>
+                    <Plus size={15} /> Add Product
+                  </button>
+                  <button 
+                    onClick={() => { fetchProducts(); fetchOrders(); }}
+                    style={{ background: '#e2e8f0', color: '#334155', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 6, borderRadius: 6, border: 'none', cursor: 'pointer' }}>
+                    <RefreshCw size={14} /> Refresh
+                  </button>
+                </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16 }}>
@@ -328,9 +429,23 @@ export default function App() {
                           <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', background: '#f1f5f9', padding: '2px 6px', borderRadius: 4 }}>
                             {product.sku}
                           </span>
-                          <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '1.1rem' }}>
-                            ${Number(product.price).toFixed(2)}
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '1.1rem' }}>
+                              ${Number(product.price).toFixed(2)}
+                            </span>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); handleOpenEditProduct(product); }}
+                              title="Edit Product & Stock"
+                              style={{ background: '#f1f5f9', color: '#475569', border: 'none', padding: '4px 6px', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                              <Edit2 size={13} />
+                            </button>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); handleDeleteProduct(product.id, product.name); }}
+                              title="Delete Product"
+                              style={{ background: '#fee2e2', color: '#b91c1c', border: 'none', padding: '4px 6px', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
                         </div>
                         <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#1e293b', marginBottom: 6 }}>{product.name}</h3>
                         <p style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: 14 }}>{product.description}</p>
@@ -683,6 +798,113 @@ export default function App() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* PRODUCT CREATE / EDIT MODAL */}
+      {productModalOpen && (
+        <div className="modal-backdrop">
+          <div className="modal-card" style={{ maxWidth: 480, padding: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Package size={20} color="#2563eb" />
+                <h3 style={{ margin: 0, fontSize: '1.15rem' }}>
+                  {editingProduct ? 'Edit Product & Stock' : 'Add New Product'}
+                </h3>
+              </div>
+              <button onClick={() => setProductModalOpen(false)} style={{ background: 'transparent', color: '#64748b', fontSize: '1.2rem', border: 'none', cursor: 'pointer' }}>×</button>
+            </div>
+
+            {productFormError && (
+              <div style={{ background: '#fee2e2', color: '#b91c1c', padding: '8px 12px', borderRadius: 6, fontSize: '0.85rem', marginBottom: 14 }}>
+                {productFormError}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveProduct} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: 4 }}>Product Name *</label>
+                <input 
+                  type="text" 
+                  required 
+                  value={productFormData.name} 
+                  onChange={e => setProductFormData({ ...productFormData, name: e.target.value })}
+                  placeholder="e.g. Handheld POS Terminal"
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #cbd5e1' }}
+                />
+              </div>
+
+              {!editingProduct && (
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: 4 }}>SKU (Unique Code) *</label>
+                  <input 
+                    type="text" 
+                    required 
+                    value={productFormData.sku} 
+                    onChange={e => setProductFormData({ ...productFormData, sku: e.target.value })}
+                    placeholder="e.g. POS-HH-01"
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #cbd5e1' }}
+                  />
+                </div>
+              )}
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: 4 }}>Description</label>
+                <input 
+                  type="text" 
+                  value={productFormData.description} 
+                  onChange={e => setProductFormData({ ...productFormData, description: e.target.value })}
+                  placeholder="Brief description of the item"
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #cbd5e1' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: 4 }}>Price ($) *</label>
+                  <input 
+                    type="number" 
+                    step="0.01" 
+                    min="0" 
+                    required 
+                    value={productFormData.price} 
+                    onChange={e => setProductFormData({ ...productFormData, price: e.target.value })}
+                    placeholder="0.00"
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #cbd5e1' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: 4 }}>Available Stock *</label>
+                  <input 
+                    type="number" 
+                    step="1" 
+                    min="0" 
+                    required 
+                    value={productFormData.available_stock} 
+                    onChange={e => setProductFormData({ ...productFormData, available_stock: e.target.value })}
+                    placeholder="0"
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #cbd5e1' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
+                <button 
+                  type="button" 
+                  onClick={() => setProductModalOpen(false)}
+                  style={{ background: '#f1f5f9', color: '#475569', padding: '8px 16px', borderRadius: 6, border: 'none', cursor: 'pointer' }}>
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={isSubmittingProduct}
+                  style={{ background: '#2563eb', color: 'white', padding: '8px 18px', borderRadius: 6, border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                  {isSubmittingProduct ? 'Saving...' : editingProduct ? 'Save Changes' : 'Create Product'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
